@@ -23,6 +23,7 @@ int main (int argc, char* argv[])
 	struct timeval end;
 	double trans_time; //calulate the time between the device is opened and it is closed
 	char *kernel_address, *file_address;
+	off_t g;
 
 
 	strcpy(file_name, argv[1]);
@@ -35,7 +36,7 @@ int main (int argc, char* argv[])
 		return 1;
 	}
 	gettimeofday(&start ,NULL);
-	if( (file_fd = open (file_name, O_RDWR | O_CREAT | O_TRUNC)) < 0)
+	if( (file_fd = open (file_name, O_RDWR | O_CREAT )) < 0)
 	{
 		perror("failed to open input file\n");
 		return 1;
@@ -48,7 +49,9 @@ int main (int argc, char* argv[])
 	}
 
     write(1, "ioctl success\n", 14);
-
+	int offset = 0;
+	void *map = NULL;
+	
 	switch(method[0])
 	{
 		case 'f'://fcntl : read()/write()
@@ -59,6 +62,17 @@ int main (int argc, char* argv[])
 				file_size += ret;
 			}while(ret > 0);
 			break;
+		case 'm'://mmap : 
+			do
+			{
+				map = mmap(NULL, PAGE_SIZE, PROT_WRITE, MAP_SHARED, file_fd, offset);				
+				ret = read(dev_fd, map, 4096);
+				if(ret == -1)
+					perror("read failed");
+				offset += ret;
+				munmap(map, 4096);
+			} 
+			break;		
 	}
 
 
