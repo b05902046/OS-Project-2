@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/time.h>
+#include <stdlib.h>
 
 #define PAGE_SIZE 4096
 #define BUF_SIZE 512
@@ -24,8 +25,7 @@ int main (int argc, char* argv[])
 	struct timeval start;
 	struct timeval end;
 	double trans_time; //calulate the time between the device is opened and it is closed
-
-
+	
 	strcpy(file_name, argv[1]);
 	strcpy(method, argv[2]);
 
@@ -48,6 +48,12 @@ int main (int argc, char* argv[])
 		return 1;
 	}
 
+	/*==============   added   ===================*/
+	
+	size_t temp_file_read = 0;
+	char *temp_memory_ptr;
+	/*==============   added   ===================*/
+
 
 	if(ioctl(dev_fd, 0x12345677) == -1) //0x12345677 : create socket and accept the connection from the slave
 	{
@@ -55,16 +61,33 @@ int main (int argc, char* argv[])
 		return 1;
 	}
 
-
 	switch(method[0])
 	{
 		case 'f': //fcntl : read()/write()
+			write(STDOUT_FILENO, "Using FCNTL", 11);
 			do
 			{
 				ret = read(file_fd, buf, sizeof(buf)); // read from the input file
 				write(dev_fd, buf, ret);//write to the the device
 			}while(ret > 0);
 			break;
+		case 'm': //mmap
+			write(STDOUT_FILENO, "Using MMAP\n", 11);
+			while(temp_file_read < file_size){
+				printf("temp_file_read = %d\n", temp_file_read); fflush(stdout);
+				if((temp_memory_ptr = (char *)mmap(NULL, BUF_SIZE, PROT_READ, MAP_SHARED, file_fd, temp_file_read)) == MAP_FAILED){
+					perror("Failed to mmap read in:"); exit(1);
+				}
+				write(STDOUT_FILENO, "Read:\n", 6);
+				write(STDOUT_FILENO, temp_memory_ptr, BUF_SIZE);
+				write(STDOUT_FILENO, "\nended", 6);
+				temp_file_read += write(dev_fd, temp_memory_ptr, BUF_SIZE);
+				if(munmap(temp_memory_ptr, BUF_SIZE) != 0){
+					perror("Failed to munmap read in:"); exit(1);
+				}
+				
+				
+			}
 	}
 
 	if(ioctl(dev_fd, 0x12345679) == -1) // end sending data, close the connection
