@@ -36,7 +36,7 @@ int main (int argc, char* argv[])
 		return 1;
 	}
 	gettimeofday(&start ,NULL);
-	if( (file_fd = open (file_name, O_RDWR | O_CREAT )) < 0)
+	if( (file_fd = open (file_name, O_RDWR | O_CREAT | O_TRUNC)) < 0)
 	{
 		perror("failed to open input file\n");
 		return 1;
@@ -65,11 +65,20 @@ int main (int argc, char* argv[])
 		case 'm'://mmap : 
 			do
 			{
-				map = mmap(NULL, PAGE_SIZE, PROT_WRITE, MAP_SHARED, file_fd, offset);				
-				ret = read(dev_fd, map, 4096);
-				if(ret == -1)
+				map = mmap(NULL, BUF_SIZE, PROT_WRITE, MAP_SHARED, file_fd, offset);
+				if(map == MAP_FAILED){
+					perror("map failed");
+					exit(9);
+				}				
+				ret = read(dev_fd, map, BUF_SIZE);
+				fprintf(stdout, "errno = %d", errno);
+				fflush(stdout);
+				if(ret == -1){
 					perror("read failed");
+					exit(8);
+				}
 				offset += ret;
+				file_size += ret;
 				munmap(map, 4096);
 			}
 			while(ret > 0); 
