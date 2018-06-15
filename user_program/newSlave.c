@@ -9,7 +9,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/time.h>
-#include "useful.h"
+#include "forslave.h"
 
 size_t PAGE_SIZE;
 #define BUF_SIZE 512
@@ -68,30 +68,10 @@ int main (int argc, char* argv[])
 			break;
 		case 'm'://mmap
 			while(1){
-				/*if(posix_fallocate(file_fd, disk_file_size, offset + PAGE_SIZE - disk_file_size) != 0){
-					perror("Failed to fallocate: "); exit(1);
-				}else{
-					disk_file_size += (offset + PAGE_SIZE - disk_file_size);
-					fprintf(stdout, "offset %d  file_size %d  disk_file_size %d\n", offset, file_size, disk_file_size); fflush(stdout);
-				}
-				file_address = (char *)mmap(NULL, PAGE_SIZE, PROT_WRITE|PROT_READ|PROT_EXEC, MAP_SHARED, file_fd, offset);
-				if(file_address == MAP_FAILED){
-					perror("Failed to mmap for write:"); exit(1);
-				}
-				if((ret = read(dev_fd, file_address, PAGE_SIZE)) <= 0){
-					fprintf(stdout, "EOF!\n"); fflush(stdout); break;
-				}
-				write(STDOUT_FILENO, file_address, ret);
-				fprintf(stdout, "read ret = %d\n", ret); fflush(stdout);
-				file_size += ret;  offset = ret;
-				if(munmap(file_address, PAGE_SIZE) == -1){
-					perror("Failed to munmap: "); exit(1);
-				}
-				if(ret < PAGE_SIZE){
-					fprintf(stdout, "ended!\n"); fflush(stdout); break;
-				}
-				*/
-				
+				ret = mmap_read(dev_fd, &file_address);
+				if(ret == 0) break;
+				mmap_write(&file_size, &disk_file_size, file_fd, file_address, ret);
+				munmap_for_read(file_address, ret);
 			}
 			
 	}
@@ -103,7 +83,7 @@ int main (int argc, char* argv[])
 	}
 	gettimeofday(&end, NULL);
 	trans_time = (end.tv_sec - start.tv_sec)*1000 + (end.tv_usec - start.tv_usec)*0.0001;
-	printf("Transmission time: %lf ms, File size: %d bytes\n", trans_time, file_size / 8);
+	printf("Transmission time: %lf ms, File size: %u bytes\n", trans_time, file_size / 8);
 
 
 	close(file_fd);

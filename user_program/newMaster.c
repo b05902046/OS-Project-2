@@ -8,8 +8,10 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/time.h>
+#include <stdlib.h>
+#include "formaster.h"
 
-#define PAGE_SIZE 4096
+size_t PAGE_SIZE;
 #define BUF_SIZE 512
 size_t get_filesize(const char* filename);//get the size of the input file
 
@@ -48,9 +50,8 @@ int main (int argc, char* argv[])
 	}
 
 	/*==============   added   ===================*/
-	
-	size_t temp_file_read = 0;
-	char *temp_memory_ptr;
+	size_t sent;
+	PAGE_SIZE = getpagesize();
 	/*==============   added   ===================*/
 
 
@@ -60,10 +61,10 @@ int main (int argc, char* argv[])
 		return 1;
 	}
 
-
 	switch(method[0])
 	{
 		case 'f': //fcntl : read()/write()
+			write(STDOUT_FILENO, "Using FCNTL", 11);
 			do
 			{
 				ret = read(file_fd, buf, sizeof(buf)); // read from the input file
@@ -71,16 +72,15 @@ int main (int argc, char* argv[])
 			}while(ret > 0);
 			break;
 		case 'm': //mmap
-			while(temp_file_read < file_size){
-				if((temp_memory_ptr = (char *)mmap(NULL, BUF_SIZE, PROT_READ, MAP_SHARED, file_fd, temp_file_read)) == MAP_FAILED){
-					perror("Failed to mmap read in:"); exit(1);
-				}
-				temp_file_read += write(dev_fd, temp_memory_ptr, BUF_SIZE);
-				if(munmap(temp_memory_ptr, BUF_SIZE) != 0){
-					perror("Failed to munmap read in:"); exit(1);
-				}
-				
-				
+			while(offset < file_size){
+				#ifdef DEBUG
+					fprintf(stdout, "%u left\n", file_size); fflush(stdout);
+				#endif
+				sent = file_size - offset;
+				if(sent > PAGE_SIZE) sent = PAGE_SIZE;
+				file_address = mmap_read(file_fd, &offset, sent);
+				mmap_write(dev_fd, file_address, sent);
+				munmap_for_read(file_address, sent);
 			}
 	}
 
@@ -91,7 +91,7 @@ int main (int argc, char* argv[])
 	}
 	gettimeofday(&end, NULL);
 	trans_time = (end.tv_sec - start.tv_sec)*1000 + (end.tv_usec - start.tv_usec)*0.0001;
-	printf("Transmission time: %lf ms, File size: %d bytes\n", trans_time, file_size / 8);
+	printf("Transmission time: %lf ms, File size: %u bytes\n", trans_time, file_size / 8);
 
 	close(file_fd);
 	close(dev_fd);

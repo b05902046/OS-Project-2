@@ -10,7 +10,7 @@
 #include <sys/time.h>
 #include <stdlib.h>
 
-#define PAGE_SIZE 4096
+size_t PAGE_SIZE;
 #define BUF_SIZE 512
 size_t get_filesize(const char* filename);//get the size of the input file
 
@@ -52,6 +52,7 @@ int main (int argc, char* argv[])
 	
 	size_t left, sent;
 	char *temp_memory_ptr;
+	PAGE_SIZE = getpagesize();
 	/*==============   added   ===================*/
 
 
