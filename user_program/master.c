@@ -50,7 +50,7 @@ int main (int argc, char* argv[])
 
 	/*==============   added   ===================*/
 	
-	size_t temp_file_read = 0;
+	size_t left, sent;
 	char *temp_memory_ptr;
 	/*==============   added   ===================*/
 
@@ -73,20 +73,22 @@ int main (int argc, char* argv[])
 			break;
 		case 'm': //mmap
 			write(STDOUT_FILENO, "Using MMAP\n", 11);
-			while(temp_file_read < file_size){
-				printf("temp_file_read = %d\n", temp_file_read); fflush(stdout);
-				if((temp_memory_ptr = (char *)mmap(NULL, BUF_SIZE, PROT_READ, MAP_SHARED, file_fd, temp_file_read)) == MAP_FAILED){
+			left = file_size;
+			while(left > 0){
+				sent = (left <= BUF_SIZE)? left:BUF_SIZE;
+				printf("BEFORE left = %d   sent = %d\n", left, sent); fflush(stdout);
+				if((temp_memory_ptr = (char *)mmap(NULL, sent, PROT_READ, MAP_SHARED, file_fd, (file_size - left))) == MAP_FAILED){
 					perror("Failed to mmap read in:"); exit(1);
 				}
 				write(STDOUT_FILENO, "Read:\n", 6);
 				write(STDOUT_FILENO, temp_memory_ptr, BUF_SIZE);
 				write(STDOUT_FILENO, "\nended", 6);
-				temp_file_read += write(dev_fd, temp_memory_ptr, BUF_SIZE);
-				if(munmap(temp_memory_ptr, BUF_SIZE) != 0){
+				printf("write() = %d\n", write(dev_fd, temp_memory_ptr, sent));
+				left -= sent;
+				if(munmap(temp_memory_ptr, sent) != 0){
 					perror("Failed to munmap read in:"); exit(1);
 				}
-				
-				
+				printf("AFTER left = %d   sent = %d\n", left, sent); fflush(stdout);				
 			}
 	}
 
