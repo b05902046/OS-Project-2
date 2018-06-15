@@ -71,7 +71,8 @@ int main (int argc, char* argv[])
 					perror("read failed");
 				offset += ret;
 				munmap(map, 4096);
-			} 
+			}
+			while(ret > 0); 
 			break;		
 	}
 
