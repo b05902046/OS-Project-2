@@ -12,13 +12,12 @@
 #include "formaster.h"
 
 size_t PAGE_SIZE;
-#define BUF_SIZE 512
 size_t get_filesize(const char* filename);//get the size of the input file
 
 
 int main (int argc, char* argv[])
 {
-	char buf[BUF_SIZE];
+	char *buf;
 	int i, dev_fd, file_fd;// the fd for the device and the fd for the input file
 	size_t ret, file_size, offset = 0, tmp;
 	char file_name[50], method[20];
@@ -52,6 +51,7 @@ int main (int argc, char* argv[])
 	/*==============   added   ===================*/
 	size_t sent;
 	PAGE_SIZE = getpagesize();
+	if((buf = (char *)malloc(PAGE_SIZE)) == NULL) perror_exit("Failed to malloc buf: ", 1);
 	/*==============   added   ===================*/
 
 
@@ -67,7 +67,11 @@ int main (int argc, char* argv[])
 			write(STDOUT_FILENO, "Using FCNTL", 11);
 			do
 			{
-				ret = read(file_fd, buf, sizeof(buf)); // read from the input file
+				ret = read(file_fd, buf, PAGE_SIZE); // read from the input file
+				#ifdef DEBUG
+					PRINT("send_len = %u\n", ret);
+				#endif
+				write(dev_fd, &ret, sizeof(size_t));
 				write(dev_fd, buf, ret);//write to the the device
 			}while(ret > 0);
 			break;
@@ -81,6 +85,7 @@ int main (int argc, char* argv[])
 				file_address = mmap_read(file_fd, &offset, sent);
 				#ifdef NO_KSOCKET_MMAP
 					PRINT("NO_KSCOCKET_MMAP\n");
+					write(dev_fd, &sent, sizeof(size_t));
 					write(dev_fd, file_address, sent);
 				#else
 					mmap_write(dev_fd, file_address, sent);

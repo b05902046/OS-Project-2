@@ -12,10 +12,9 @@
 #include "forslave.h"
 
 size_t PAGE_SIZE;
-#define BUF_SIZE 512
 int main (int argc, char* argv[])
 {
-	char buf[BUF_SIZE];
+	char *buf;
 	int i, dev_fd, file_fd;// the fd for the device and the fd for the input file
 	size_t ret, file_size = 0, content_len;
 	char file_name[50];
@@ -53,39 +52,49 @@ int main (int argc, char* argv[])
 
 	/*=======================added====================*/
 	size_t disk_file_size = 0; PAGE_SIZE = getpagesize();
-	#ifdef NO_KSOCKET_MMAP
-		char *newbuf_pagesize = (char *)malloc(sizeof(PAGE_SIZE));
-		if(newbuf_pagesize == NULL) perror_exit("Failed to malloc newbuf_pagesize: ", 1);
-	#endif
+	if((buf = (char *)malloc(PAGE_SIZE) == NULL)) perror_exit("Failed to malloc buf: ", 1);
+	
 	/*=======================added====================*/
 
 
 	switch(method[0])
 	{
 		case 'f'://fcntl : read()/write()
-			do
-			{
-				ret = read(dev_fd, buf, sizeof(buf)); // read from the the device
+			#ifdef DEBUG
+				PRINT("Initial file size = %u\n", file_size);
+			#endif
+			while(1){
+				read(dev_fd, &ret, sizeof(size_t));
+				#ifdef DEBUG
+					if(ret == 0){ PRINT("EOF\n"); break;}
+					else if(ret == 4294967295U) exit(1);
+					else PRINT("content_len = %u\n", ret);
+				#endif
+				if(ret == 0) break;
+				read(dev_fd, buf, ret); // read from the the device
 				write(file_fd, buf, ret); //write to the input file
 				file_size += ret;
-			}while(ret > 0);
+				#ifdef DEBUG
+					PRINT("file_size %u after write %u\n", file_size, ret);
+				#endif
+			}
 			break;
 		case 'm'://mmap
 			while(1){
 				#ifdef NO_KSOCKET_MMAP
 					if((ret = read(dev_fd, &content_len, sizeof(size_t))) != sizeof(size_t)){
 						#ifdef DEBUG
-							PRINT("content_len = %u\n", content_len);
+							PRINT("size_t %u != ret = %u   content_len = %u\n", sizeof(size_t), ret, content_len);
 						#endif
-						perror_exit("Failed to read content_len: ", 1);						
+						//perror_exit("Failed to read content_len: ", 1);						
 					}
 					#ifdef DEBUG
 						PRINT("content_len = %u\n", content_len);
 					#endif
-					if((ret = read(dev_fd, newbuf_pagesize, content_len)) != content_len){
+					if((ret = read(dev_fd, buf, content_len)) != content_len){
 						PRINT("Weird read content: ret = %u\n", ret); perror_exit("Failed to read?: ", 1);
 					}
-					file_address = newbuf_pagesize;
+					file_address = buf;
 				#else
 					ret = mmap_read(dev_fd, &file_address);
 				#endif
