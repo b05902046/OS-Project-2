@@ -17,7 +17,7 @@ int main (int argc, char* argv[])
 {
 	char buf[BUF_SIZE];
 	int i, dev_fd, file_fd;// the fd for the device and the fd for the input file
-	size_t ret, file_size = 0, data_size = -1;
+	size_t ret, file_size = 0, content_len;
 	char file_name[50];
 	char method[20];
 	char ip[20];
@@ -53,6 +53,10 @@ int main (int argc, char* argv[])
 
 	/*=======================added====================*/
 	size_t disk_file_size = 0; PAGE_SIZE = getpagesize();
+	#ifdef NO_KSOCKET_MMAP
+		char *newbuf_pagesize = (char *)malloc(sizeof(PAGE_SIZE));
+		if(newbuf_pagesize == NULL) perror_exit("Failed to malloc newbuf_pagesize: ", 1);
+	#endif
 	/*=======================added====================*/
 
 
@@ -68,7 +72,23 @@ int main (int argc, char* argv[])
 			break;
 		case 'm'://mmap
 			while(1){
-				ret = mmap_read(dev_fd, &file_address);
+				#ifdef NO_KSOCKET_MMAP
+					if((ret = read(dev_fd, &content_len, sizeof(size_t))) != sizeof(size_t)){
+						#ifdef DEBUG
+							PRINT("content_len = %u\n", content_len);
+						#endif
+						perror_exit("Failed to read content_len: ", 1);						
+					}
+					#ifdef DEBUG
+						PRINT("content_len = %u\n", content_len);
+					#endif
+					if((ret = read(dev_fd, newbuf_pagesize, content_len)) != content_len){
+						PRINT("Weird read content: ret = %u\n", ret); perror_exit("Failed to read?: ", 1);
+					}
+					file_address = newbuf_pagesize;
+				#else
+					ret = mmap_read(dev_fd, &file_address);
+				#endif
 				if(ret == 0) break;
 				mmap_write(&file_size, &disk_file_size, file_fd, file_address, ret);
 				munmap_for_read(file_address, ret);

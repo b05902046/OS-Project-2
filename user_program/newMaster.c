@@ -79,11 +79,20 @@ int main (int argc, char* argv[])
 				sent = file_size - offset;
 				if(sent > PAGE_SIZE) sent = PAGE_SIZE;
 				file_address = mmap_read(file_fd, &offset, sent);
-				mmap_write(dev_fd, file_address, sent);
+				#ifdef NO_KSOCKET_MMAP
+					PRINT("NO_KSCOCKET_MMAP\n");
+					write(dev_fd, file_address, sent);
+				#else
+					mmap_write(dev_fd, file_address, sent);
+				#endif
 				munmap_for_read(file_address, sent);
 			}
 			sent = 0;
-			mmap_write(dev_fd, &sent, sizeof(size_t));
+			#ifdef NO_KSOCKET_MMAP
+				write(dev_fd, &sent, sizeof(size_t));
+			#else
+				mmap_write(dev_fd, &sent, sizeof(size_t));
+			#endif
 	}
 
 	if(ioctl(dev_fd, 0x12345679) == -1) // end sending data, close the connection
