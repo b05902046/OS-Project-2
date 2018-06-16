@@ -36,9 +36,9 @@ size_t mmap_read(int fd, char **mmap_buffer){
 	if((*mmap_buffer = (char *)mmap(NULL, ret, PROT_READ, MAP_SHARED, fd, 0)) == MAP_FAILED)
 		perror_exit("Failed to mmap for read content: ", 1);
 	#ifdef DEBUG
-		PRINT("read %u\n", count);
+		PRINT("read %u\n", ret);
 		#ifdef CONTENT
-			write(STDOUT_FILENO, mmap_buffer, count);
+			write(STDOUT_FILENO, mmap_buffer, ret);
 		#endif
 	#endif
 	return ret;

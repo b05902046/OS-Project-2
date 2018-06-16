@@ -74,7 +74,7 @@ int main (int argc, char* argv[])
 		case 'm': //mmap
 			while(offset < file_size){
 				#ifdef DEBUG
-					fprintf(stdout, "%u left\n", file_size); fflush(stdout);
+					fprintf(stdout, "file_size %u\n", file_size); fflush(stdout);
 				#endif
 				sent = file_size - offset;
 				if(sent > PAGE_SIZE) sent = PAGE_SIZE;
@@ -82,6 +82,8 @@ int main (int argc, char* argv[])
 				mmap_write(dev_fd, file_address, sent);
 				munmap_for_read(file_address, sent);
 			}
+			sent = 0;
+			mmap_write(dev_fd, &sent, sizeof(size_t));
 	}
 
 	if(ioctl(dev_fd, 0x12345679) == -1) // end sending data, close the connection

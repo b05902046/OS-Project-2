@@ -30,7 +30,9 @@ void mmap_write(int fd, char *buf, size_t count){
 		perror_exit("Failed to mmap for write length: ", 1);
 	*send = count;
 	#ifdef DEBUG
-		PRINT("send %u\n", count);
+		if(count > 0) PRINT("send %u\n", count);
+		else if(count == 0) PRINT("send EOF\n");
+		else{ PRINT("Weird write < 0\n"); exit(1);}
 	#endif
 	if(munmap(send, sizeof(size_t)) == -1) perror_exit("Failed to munmap for write lenght: ", 1);
 	
