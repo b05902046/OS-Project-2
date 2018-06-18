@@ -13,11 +13,10 @@ void munmap_for_read(char *mmap_buffer, size_t count){
 	if(munmap(mmap_buffer, count) == -1) perror_exit("Failed to munmap for read content: ", 1);
 }
 
-char *mmap_read(int fd, off_t *offset, size_t count){
+char *mmap_read(int fd, size_t offset, size_t count){
 	char *ret;
-	if((ret = (char *)mmap(NULL, count, PROT_READ, MAP_SHARED, fd, *offset)) == MAP_FAILED)
+	if((ret = (char *)mmap(NULL, count, PROT_READ, MAP_SHARED, fd, (off_t)offset)) == MAP_FAILED)
 		perror_exit("Failed to mmap for read: ", 1);
-	*offset += count;
 	#ifdef DEBUG
 		PRINT("read %u\n", count);
 	#endif
@@ -30,9 +29,7 @@ void mmap_write(int fd, char *buf, size_t count){
 		perror_exit("Failed to mmap for write length: ", 1);
 	*send = count;
 	#ifdef DEBUG
-		if(count > 0) PRINT("send %u\n", count);
-		else if(count == 0) PRINT("send EOF\n");
-		else{ PRINT("Weird write < 0\n"); exit(1);}
+		PRINT("send %u\n", count);
 	#endif
 	if(munmap(send, sizeof(size_t)) == -1) perror_exit("Failed to munmap for write lenght: ", 1);
 	

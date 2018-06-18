@@ -11,13 +11,14 @@
 #include <stdlib.h>
 #include "formaster.h"
 
-size_t PAGE_SIZE;
+
+#define BUF_SIZE 512
 size_t get_filesize(const char* filename);//get the size of the input file
 
 
 int main (int argc, char* argv[])
 {
-	char *buf;
+	char fBuf[BUF_SIZE], *mBuf;
 	int i, dev_fd, file_fd;// the fd for the device and the fd for the input file
 	size_t ret, file_size, offset = 0, tmp;
 	char file_name[50], method[20];
@@ -49,9 +50,8 @@ int main (int argc, char* argv[])
 	}
 
 	/*==============   added   ===================*/
-	size_t sent;
-	PAGE_SIZE = getpagesize();
-	if((buf = (char *)malloc(PAGE_SIZE)) == NULL) perror_exit("Failed to malloc buf: ", 1);
+	size_t sent = 0, real_page_size = getpagesize();
+	if(PAGE_SIZE != real_page_size){ PRINT("real_page_size %lu %lu != PAGE_SIZE\n", real_page_size, PAGE_SIZE); exit(1);}
 	/*==============   added   ===================*/
 
 
@@ -64,42 +64,45 @@ int main (int argc, char* argv[])
 	switch(method[0])
 	{
 		case 'f': //fcntl : read()/write()
+			PRINT("Using FCNTL");
 			write(STDOUT_FILENO, "Using FCNTL", 11);
 			do
 			{
-				ret = read(file_fd, buf, PAGE_SIZE); // read from the input file
-				#ifdef DEBUG
-					PRINT("send_len = %u\n", ret);
-				#endif
-				write(dev_fd, &ret, sizeof(size_t));
-				write(dev_fd, buf, ret);//write to the the device
+				ret = read(file_fd, fBuf, BUF_SIZE); // read from the input file
+				write(dev_fd, fBuf, ret);//write to the the device
 			}while(ret > 0);
 			break;
 		case 'm': //mmap
-			while(offset < file_size){
-				#ifdef DEBUG
-					fprintf(stdout, "file_size %u\n", file_size); fflush(stdout);
-				#endif
-				sent = file_size - offset;
-				if(sent > PAGE_SIZE) sent = PAGE_SIZE;
-				file_address = mmap_read(file_fd, &offset, sent);
-				#ifdef NO_KSOCKET_MMAP
-					PRINT("NO_KSCOCKET_MMAP\n");
-					write(dev_fd, &sent, sizeof(size_t));
-					write(dev_fd, file_address, sent);
-				#else
-					mmap_write(dev_fd, file_address, sent);
-				#endif
-				munmap_for_read(file_address, sent);
+			PRINT("Using MMAP\n");
+			while(1){
+				PRINT("In while\n");
+				int sendTimes; size_t left = file_size - sent;
+				if(left < PAGE_SIZE){
+					sendTimes = (left + 511)/512;
+					if(sendTimes > 0){
+						mBuf = mmap_read(file_fd, sent, PAGE_SIZE);
+						for(int i=0;i<sendTimes;++i){
+							size_t num = (left < 512)? left:512;
+							write(dev_fd, &mBuf[i*512], num);
+							PRINT("write %lu\n", num);
+							write(STDOUT_FILENO, &mBuf[i*512], num);
+							left -= num; sent += num;
+						}
+					}
+					break;
+				}else{
+					mBuf =mmap_read(file_fd, sent, PAGE_SIZE);
+					for(int i=0;i<8;++i){
+						write(dev_fd, &mBuf[i*512], 512);
+						PRINT("write %lu\n", 512UL);
+						write(STDOUT_FILENO, &mBuf[i*512], 512);
+						left -= 512; sent += 512;
+					}
+				}
 			}
-			sent = 0;
-			#ifdef NO_KSOCKET_MMAP
-				write(dev_fd, &sent, sizeof(size_t));
-			#else
-				mmap_write(dev_fd, &sent, sizeof(size_t));
-			#endif
 	}
-
+	read(dev_fd, fBuf, 3);
+	write(STDOUT_FILENO, fBuf, 3);
 	if(ioctl(dev_fd, 0x12345679) == -1) // end sending data, close the connection
 	{
 		perror("ioclt server exits error\n");
@@ -107,7 +110,7 @@ int main (int argc, char* argv[])
 	}
 	gettimeofday(&end, NULL);
 	trans_time = (end.tv_sec - start.tv_sec)*1000 + (end.tv_usec - start.tv_usec)*0.0001;
-	printf("Transmission time: %lf ms, File size: %u bytes\n", trans_time, file_size / 8);
+	printf("Transmission time: %lf ms, File size: %lu bytes\n", trans_time, file_size / 8);
 
 	close(file_fd);
 	close(dev_fd);
