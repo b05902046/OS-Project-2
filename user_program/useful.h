@@ -7,7 +7,7 @@
 
 #define PRINT(ARGS...)  do{fprintf(stdout,ARGS);fflush(stdout);}while(0)
 	
-extern size_t PAGE_SIZE;
+#define PAGE_SIZE 4096UL
 
 void perror_exit(char *string, int value){
 	perror(string); exit(value);
