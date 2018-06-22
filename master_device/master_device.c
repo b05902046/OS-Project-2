@@ -27,7 +27,7 @@
 
 #define DEFAULT_PORT 2325
 #define master_IOCTL_CREATESOCK 0x12345677
-#define master_IOCTL_MMAP 0x12345678
+#define master_IOCTL_SEND 0x12345678
 #define master_IOCTL_EXIT 0x12345679
 #define BUF_SIZE 512
 #define MAP_SIZE PAGE_SIZE * 100
@@ -120,7 +120,7 @@ static int __init master_init(void)
     return ret;
   }
 
-  printk(KERN_INFO "master has been registered!\n");
+  //printk(KERN_INFO "master has been registered!\n");
 
   old_fs = get_fs();
   set_fs(KERNEL_DS);
@@ -135,7 +135,7 @@ static int __init master_init(void)
   addr_len = sizeof(struct sockaddr_in);
 
   sockfd_srv = ksocket(AF_INET, SOCK_STREAM, 0);
-  printk("sockfd_srv = 0x%p  socket is created \n", sockfd_srv);
+  //printk("sockfd_srv = 0x%p  socket is created \n", sockfd_srv);
   if (sockfd_srv == NULL)
     {
       printk("socket failed\n");
@@ -163,7 +163,7 @@ static void __exit master_exit(void)
       return ;
     }
   set_fs(old_fs);
-  printk(KERN_INFO "master exited!\n");
+  //printk(KERN_INFO "master exited!\n");
   debugfs_remove(file1);
 }
 
@@ -197,15 +197,15 @@ static long master_ioctl(struct file *file, unsigned int ioctl_num, unsigned lon
 	printk("accept failed\n");
 	return -1;
       }
-    else
-      printk("aceept sockfd_cli = 0x%p\n", sockfd_cli);
+    //else
+    //  printk("aceept sockfd_cli = 0x%p\n", sockfd_cli);
 
     tmp = inet_ntoa(&addr_cli.sin_addr);
-    printk("got connected from : %s %d\n", tmp, ntohs(addr_cli.sin_port));
+    //printk("got connected from : %s %d\n", tmp, ntohs(addr_cli.sin_port));
     kfree(tmp);
     ret = 0;
     break;
-  case master_IOCTL_MMAP:
+  case master_IOCTL_SEND:
     //printk("%s\n", file->private_data);
     ksend(sockfd_cli, file->private_data, ioctl_param, 0);
     break;
