@@ -26,7 +26,7 @@
 #endif
 
 #define slave_IOCTL_CREATESOCK 0x12345677
-#define slave_IOCTL_MMAP 0x12345678
+#define slave_IOCTL_RECV 0x12345678
 #define slave_IOCTL_EXIT 0x12345679
 
 
@@ -120,7 +120,7 @@ static int __init slave_init(void)
     return ret;
   }
 
-  printk(KERN_INFO "slave has been registered!\n");
+//  printk(KERN_INFO "slave has been registered!\n");
 
   return 0;
 }
@@ -128,7 +128,7 @@ static int __init slave_init(void)
 static void __exit slave_exit(void)
 {
   misc_deregister(&slave_dev);
-  printk(KERN_INFO "slave exited!\n");
+//  printk(KERN_INFO "slave exited!\n");
   debugfs_remove(file1);
 }
 
@@ -179,7 +179,7 @@ static long slave_ioctl(struct file *file, unsigned int ioctl_num, unsigned long
     addr_len = sizeof(struct sockaddr_in);
 
     sockfd_cli = ksocket(AF_INET, SOCK_STREAM, 0);
-    printk("sockfd_cli = 0x%p  socket is created\n", sockfd_cli);
+    //printk("sockfd_cli = 0x%p  socket is created\n", sockfd_cli);
     if (sockfd_cli == NULL)
       {
 	printk("socket failed\n");
@@ -191,18 +191,17 @@ static long slave_ioctl(struct file *file, unsigned int ioctl_num, unsigned long
 	return -1;
       }
     tmp = inet_ntoa(&addr_srv.sin_addr);
-    printk("connected to : %s %d\n", tmp, ntohs(addr_srv.sin_port));
+    //printk("connected to : %s %d\n", tmp, ntohs(addr_srv.sin_port));
     kfree(tmp);
     ret = 0;
     break;
-  case slave_IOCTL_MMAP:
+  case slave_IOCTL_RECV:
     while (offset < MAP_SIZE) {
-      rec_n = krecv(sockfd_cli, buf, sizeof(buf), 0);
+      rec_n = krecv(sockfd_cli, file->private_data + offset, sizeof(buf), 0);
       if (rec_n == 0) {
 	break;
       }
-      memcpy(file->private_data + offset, buf, rec_n);
-      //memcpy((char *)ioctl_param + offset, buf, rec_n);
+      ////memcpy(file->private_data + offset, buf, rec_n);
       offset += rec_n;
     }
     ret = offset;
