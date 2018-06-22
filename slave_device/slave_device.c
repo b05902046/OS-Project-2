@@ -196,12 +196,13 @@ static long slave_ioctl(struct file *file, unsigned int ioctl_num, unsigned long
     ret = 0;
     break;
   case slave_IOCTL_MMAP:
-    while (1) {
+    while (offset < MAP_SIZE) {
       rec_n = krecv(sockfd_cli, buf, sizeof(buf), 0);
       if (rec_n == 0) {
 	break;
       }
       memcpy(file->private_data + offset, buf, rec_n);
+      //memcpy((char *)ioctl_param + offset, buf, rec_n);
       offset += rec_n;
     }
     ret = offset;
@@ -217,12 +218,15 @@ static long slave_ioctl(struct file *file, unsigned int ioctl_num, unsigned long
     ret = 0;
     break;
   default:
-    pgd = pgd_offset(current->mm, ioctl_param);
-    pud = pud_offset(pgd, ioctl_param);
-    pmd = pmd_offset(pud, ioctl_param);
-    ptep = pte_offset_kernel(pmd , ioctl_param);
+    pgd = pgd_offset(current->mm, /*ioctl_param*/139770280394752UL);
+    pud = pud_offset(pgd, /*ioctl_param*/139770280394752UL);
+    pmd = pmd_offset(pud, /*ioctl_param*/139770280394752UL);
+    ptep = pte_offset_kernel(pmd , /*ioctl_param*/139770280394752UL);
     pte = *ptep;
-    printk("slave: %lX\n", pte);
+    //printk("default ioctl_param = %lu\nwe want %lX\n", 139770280394752UL, ioctl_param);
+    printk("slave: %lX\n", ioctl_param);
+//    printk("slave: %lX\n", pte);
+    //printk("slave: %lX\n", (char *)ioctl_param);
     ret = 0;
     break;
   }

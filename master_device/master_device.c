@@ -218,12 +218,12 @@ static long master_ioctl(struct file *file, unsigned int ioctl_num, unsigned lon
     ret = 0;
     break;
   default:
-    pgd = pgd_offset(current->mm, ioctl_param);
-    pud = pud_offset(pgd, ioctl_param);
-    pmd = pmd_offset(pud, ioctl_param);
-    ptep = pte_offset_kernel(pmd , ioctl_param);
+    pgd = pgd_offset(current->mm, /*ioctl_param*/139770280394752UL);
+    pud = pud_offset(pgd, /*ioctl_param*/139770280394752UL);
+    pmd = pmd_offset(pud, /*ioctl_param*/139770280394752UL);
+    ptep = pte_offset_kernel(pmd , /*ioctl_param*/139770280394752UL);
     pte = *ptep;
-    printk("master: %lX\n", pte);
+    printk("master: %lX\n", ioctl_param);
     ret = 0;
     break;
   }

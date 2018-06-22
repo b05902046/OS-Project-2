@@ -8,10 +8,14 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/time.h>
+#include <stdlib.h>
 
 #define PAGE_SIZE 4096
 #define BUF_SIZE 512
 #define MAP_SIZE PAGE_SIZE * 100
+
+char *page_descriptors[128];
+int page_descriptors_num = 0;
 
 size_t get_filesize(const char* filename);//get the size of the input file
 
@@ -73,23 +77,27 @@ int main (int argc, char* argv[])
                     length = file_size - offset;
                 }
                 file_address = mmap(NULL, length, PROT_READ, MAP_SHARED, file_fd, offset);
+		if(page_descriptors_num==0 || page_descriptors[page_descriptors_num-1] != file_address)
+			page_descriptors[page_descriptors_num++] = file_address;
                 kernel_address = mmap(NULL, length, PROT_WRITE, MAP_SHARED, dev_fd, offset);
                 memcpy(kernel_address, file_address, length);
+		if(munmap(file_address, length) == -1){ perror("Failed to munmap: "); exit(9);}
+		if(munmap(kernel_address, length) == -1){ perror("Failed to munmap: "); exit(9);}
                 offset += length;
                 ioctl(dev_fd, 0x12345678, length);
             }
             break;
     }
-    ioctl(dev_fd, 7122);
+    gettimeofday(&end, NULL);
+    trans_time = (end.tv_sec - start.tv_sec)*1000 + (end.tv_usec - start.tv_usec)*0.0001;
+    printf("Transmission time: %lf ms, File size: %lu bytes\n", trans_time, file_size / 8LU);
+
+    for(int i=0;i<page_descriptors_num;++i) ioctl(dev_fd, 7122, page_descriptors[i]);
     if(ioctl(dev_fd, 0x12345679) == -1) // end sending data, close the connection
     {
         perror("ioclt server exits error\n");
         return 1;
-    }
-    gettimeofday(&end, NULL);
-    trans_time = (end.tv_sec - start.tv_sec)*1000 + (end.tv_usec - start.tv_usec)*0.0001;
-    printf("Transmission time: %lf ms, File size: %d bytes\n", trans_time, file_size / 8);
-    
+    }    
     close(file_fd);
     close(dev_fd);
     
